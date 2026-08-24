@@ -1,0 +1,447 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Acompanhamento - SMMAM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .drag-handle { cursor: grab; color: #94a3b8; }
+        .drag-handle:active { cursor: grabbing; }
+        .row-item { transition: box-shadow 0.2s; }
+        .sortable-ghost { opacity: 0.4; background-color: #e2e8f0; }
+        .tab-btn.active { border-bottom: 2px solid #0f172a; color: #0f172a; font-weight: 600; }
+        .tab-btn { color: #64748b; font-weight: 500; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="max-w-5xl mx-auto p-4 md:p-6">
+        <!-- Header -->
+        <header class="bg-slate-900 text-white rounded-xl p-6 mb-6 shadow-lg flex flex-col md:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">Gestão de Processos</h1>
+                <p class="text-slate-400 text-sm mt-1">Secretaria Municipal de Meio Ambiente • SMMAM</p>
+            </div>
+            <div class="mt-4 md:mt-0 text-sm bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-cloud-arrow-up mr-2 text-emerald-400"></i>Dados salvos localmente
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <div class="flex space-x-6 border-b border-slate-200 mb-6">
+            <button onclick="switchTab('entry')" id="tab-entry" class="tab-btn active pb-3 px-1"><i class="fa-solid fa-pen-to-square mr-2"></i>Preenchimento Semanal</button>
+            <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn pb-3 px-1"><i class="fa-solid fa-chart-line mr-2"></i>Histórico e Relatórios</button>
+        </div>
+
+        <!-- TAB: Data Entry -->
+        <div id="view-entry" class="block">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                
+                <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Data do Relatório</label>
+                        <input type="date" id="report-date" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5">
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="carregarUltimaSemana()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-lg transition-colors border border-slate-200">
+                            <i class="fa-solid fa-rotate-left mr-2"></i>Carregar Anterior
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Header -->
+                <div class="grid grid-cols-12 gap-4 px-4 py-2 bg-slate-50 border-y border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 hidden md:grid">
+                    <div class="col-span-1 text-center">Mover</div>
+                    <div class="col-span-4">Setor / Grupo</div>
+                    <div class="col-span-4">Status / Etapa</div>
+                    <div class="col-span-2 text-center">Qtd</div>
+                    <div class="col-span-1 text-center">Ação</div>
+                </div>
+
+                <!-- Sortable List -->
+                <div id="process-list" class="space-y-2">
+                    <!-- Rows will be injected here by JS -->
+                </div>
+
+                <!-- Add Row Button -->
+                <div class="mt-4 pt-4 border-t border-slate-100 text-center">
+                    <button onclick="adicionarLinha()" class="bg-white hover:bg-slate-50 text-slate-600 border border-dashed border-slate-300 font-medium py-3 px-6 rounded-lg w-full transition-colors flex items-center justify-center">
+                        <i class="fa-solid fa-plus mr-2 text-emerald-500"></i> Adicionar Nova Informação
+                    </button>
+                </div>
+
+                <!-- Save Button -->
+                <div class="mt-8 flex justify-end">
+                    <button onclick="salvarRelatorio()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-8 rounded-lg shadow-md transition-colors text-lg flex items-center">
+                        <i class="fa-solid fa-check mr-2"></i> Salvar Relatório Semanal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Reports -->
+        <div id="view-reports" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Relatórios Salvos</h2>
+                    <button onclick="exportarCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center">
+                        <i class="fa-solid fa-file-csv mr-2"></i> Exportar CSV
+                    </button>
+                </div>
+
+                <div id="reports-container" class="space-y-4">
+                    <!-- Reports will be injected here -->
+                </div>
+                
+                <div id="no-reports" class="text-center py-12 text-slate-500 hidden">
+                    <i class="fa-solid fa-inbox text-4xl mb-3 text-slate-300"></i>
+                    <p>Nenhum relatório salvo ainda.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center z-50">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 mr-3"></i>
+        <span id="toast-msg" class="font-medium"></span>
+    </div>
+
+    <script>
+        // --- Estrutura Inicial Padrão ---
+        const defaultEstrutura = [
+            { id: 'id_' + Date.now() + '1', grupo: 'Indústria — Joelson', indicador: 'Aguardando Ofício' },
+            { id: 'id_' + Date.now() + '2', grupo: 'Indústria — Joelson', indicador: 'Vistorias' },
+            { id: 'id_' + Date.now() + '3', grupo: 'Indústria — Joelson', indicador: 'Emissão de Licença' },
+            { id: 'id_' + Date.now() + '4', grupo: 'Indústria — Ecoamb', indicador: 'Aguardando Ofício' },
+            { id: 'id_' + Date.now() + '5', grupo: 'Indústria — Ecoamb', indicador: 'Vistorias' },
+            { id: 'id_' + Date.now() + '6', grupo: 'Indústria — Ecoamb', indicador: 'Aguardando Emissão' },
+            { id: 'id_' + Date.now() + '7', grupo: 'Indústria — Ecoamb', indicador: 'Emissão de Licença' },
+            { id: 'id_' + Date.now() + '8', grupo: 'Fauna e Flora', indicador: 'Processos em Análise' },
+            { id: 'id_' + Date.now() + '9', grupo: 'Geologia', indicador: 'Aprovação' },
+            { id: 'id_' + Date.now() + '10', grupo: 'Geologia', indicador: 'Regularização' },
+            { id: 'id_' + Date.now() + '11', grupo: 'Geologia', indicador: 'Parcelamento do Solo' },
+            { id: 'id_' + Date.now() + '12', grupo: 'Diretrizes e Drenagem', indicador: 'DM (Diretrizes Municipais)' },
+            { id: 'id_' + Date.now() + '13', grupo: 'Diretrizes e Drenagem', indicador: 'Drenagem' },
+            { id: 'id_' + Date.now() + '14', grupo: 'Diretrizes e Drenagem', indicador: 'Isenção Habite-se' }
+        ];
+
+        // --- Variáveis de Estado ---
+        let estrutura = JSON.parse(localStorage.getItem('smmam_estrutura')) || defaultEstrutura;
+        let historico = JSON.parse(localStorage.getItem('smmam_historico')) || [];
+        
+        // Setup Date
+        document.getElementById('report-date').valueAsDate = new Date();
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderizarLista();
+            renderizarHistorico();
+            
+            // Inicializar Sortable (Drag and Drop)
+            const list = document.getElementById('process-list');
+            new Sortable(list, {
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    atualizarEstruturaPeloDOM();
+                }
+            });
+        });
+
+        // --- Funções de UI (Preenchimento) ---
+        function renderizarLista(dadosIniciais = null) {
+            const container = document.getElementById('process-list');
+            container.innerHTML = '';
+            
+            estrutura.forEach(item => {
+                let valorAtual = '';
+                if (dadosIniciais) {
+                    const rowData = dadosIniciais.find(d => d.id === item.id);
+                    if (rowData) valorAtual = rowData.qtd;
+                }
+
+                const div = document.createElement('div');
+                div.className = 'row-item bg-white border border-slate-200 rounded-lg p-3 flex flex-col md:flex-row items-center gap-3 shadow-sm hover:shadow-md';
+                div.dataset.id = item.id;
+                
+                div.innerHTML = `
+                    <div class="md:w-1/12 flex justify-center w-full md:border-r border-slate-100">
+                        <i class="fa-solid fa-grip-vertical drag-handle text-xl p-2"></i>
+                    </div>
+                    <div class="md:w-4/12 w-full">
+                        <input type="text" class="input-grupo w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-sm font-medium focus:ring-1 focus:ring-emerald-500 outline-none" value="${item.grupo}" placeholder="Setor (ex: Indústria)">
+                    </div>
+                    <div class="md:w-4/12 w-full">
+                        <input type="text" class="input-indicador w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-emerald-500 outline-none" value="${item.indicador}" placeholder="Status (ex: Vistoria)">
+                    </div>
+                    <div class="md:w-2/12 w-full">
+                        <input type="number" min="0" class="input-qtd w-full border border-slate-300 rounded px-3 py-2 text-center font-bold text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="0" value="${valorAtual}">
+                    </div>
+                    <div class="md:w-1/12 w-full flex justify-center">
+                        <button onclick="removerLinha(this)" class="text-red-400 hover:text-red-600 p-2 rounded hover:bg-red-50 transition-colors" title="Remover linha">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function adicionarLinha() {
+            const novoItem = {
+                id: 'id_' + Date.now(),
+                grupo: '',
+                indicador: ''
+            };
+            estrutura.push(novoItem);
+            // Renderiza novamente mantendo os valores já preenchidos
+            atualizarEstruturaPeloDOM(); 
+            renderizarLista();
+        }
+
+        function removerLinha(btn) {
+            if(confirm("Tem certeza que deseja remover esta linha?")) {
+                const row = btn.closest('.row-item');
+                row.remove();
+                atualizarEstruturaPeloDOM();
+            }
+        }
+
+        function atualizarEstruturaPeloDOM() {
+            const rows = document.querySelectorAll('.row-item');
+            const novaEstrutura = [];
+            rows.forEach(row => {
+                novaEstrutura.push({
+                    id: row.dataset.id,
+                    grupo: row.querySelector('.input-grupo').value,
+                    indicador: row.querySelector('.input-indicador').value
+                });
+            });
+            estrutura = novaEstrutura;
+            localStorage.setItem('smmam_estrutura', JSON.stringify(estrutura));
+        }
+
+        // --- Funções de Ação (Salvar / Carregar) ---
+        function salvarRelatorio() {
+            atualizarEstruturaPeloDOM(); // Garante que a ordem e nomes atuais estão salvos
+            
+            const dataStr = document.getElementById('report-date').value;
+            if(!dataStr) return showToast("Por favor, selecione uma data.", false);
+
+            const rows = document.querySelectorAll('.row-item');
+            const dadosRelatorio = [];
+            let totalProcessos = 0;
+
+            rows.forEach(row => {
+                const qtdVal = row.querySelector('.input-qtd').value;
+                const num = parseInt(qtdVal) || 0;
+                totalProcessos += num;
+
+                dadosRelatorio.push({
+                    id: row.dataset.id,
+                    grupo: row.querySelector('.input-grupo').value,
+                    indicador: row.querySelector('.input-indicador').value,
+                    qtd: num
+                });
+            });
+
+            const novoRelatorio = {
+                id: 'rep_' + Date.now(),
+                data: dataStr,
+                total: totalProcessos,
+                dados: dadosRelatorio,
+                salvoEm: new Date().toISOString()
+            };
+
+            // Remove se já houver um relatório na mesma data
+            historico = historico.filter(r => r.data !== dataStr);
+            historico.push(novoRelatorio);
+            
+            // Ordenar histórico por data (mais recente primeiro)
+            historico.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+            localStorage.setItem('smmam_historico', JSON.stringify(historico));
+            
+            renderizarHistorico();
+            showToast("Relatório salvo com sucesso!");
+            
+            // Limpa as quantidades para o próximo
+            document.querySelectorAll('.input-qtd').forEach(input => input.value = '');
+        }
+
+        function carregarUltimaSemana() {
+            if (historico.length === 0) {
+                return showToast("Nenhum histórico encontrado.", false);
+            }
+            // Pega o relatório mais recente (índice 0 pois está ordenado)
+            const ultimo = historico[0];
+            renderizarLista(ultimo.dados);
+            showToast(`Dados de ${formatarData(ultimo.data)} carregados.`);
+        }
+
+        // --- Funções de UI (Relatórios) ---
+        function renderizarHistorico() {
+            const container = document.getElementById('reports-container');
+            const emptyMsg = document.getElementById('no-reports');
+            
+            container.innerHTML = '';
+            
+            if (historico.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+            
+            emptyMsg.classList.add('hidden');
+
+            historico.forEach(rep => {
+                const div = document.createElement('div');
+                div.className = 'border border-slate-200 rounded-lg overflow-hidden';
+                
+                // Agrupar dados por setor para visualização
+                let htmlTabela = '';
+                let setorAtual = '';
+                
+                rep.dados.forEach(d => {
+                    if(d.grupo !== setorAtual) {
+                        htmlTabela += `<tr class="bg-slate-50"><td colspan="2" class="px-4 py-2 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">${d.grupo}</td></tr>`;
+                        setorAtual = d.grupo;
+                    }
+                    htmlTabela += `
+                        <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                            <td class="px-4 py-2 text-sm text-slate-600 pl-6">${d.indicador}</td>
+                            <td class="px-4 py-2 text-sm font-semibold text-slate-900 text-right w-24">${d.qtd}</td>
+                        </tr>
+                    `;
+                });
+
+                div.innerHTML = `
+                    <div class="bg-slate-900 text-white px-5 py-4 flex justify-between items-center cursor-pointer" onclick="toggleReport('${rep.id}')">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-regular fa-calendar text-emerald-400"></i>
+                            <span class="font-bold text-lg">${formatarData(rep.data)}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="bg-slate-700 px-3 py-1 rounded-full text-sm font-medium">Total: ${rep.total}</span>
+                            <i id="icon-${rep.id}" class="fa-solid fa-chevron-down transition-transform"></i>
+                        </div>
+                    </div>
+                    <div id="content-${rep.id}" class="hidden bg-white">
+                        <table class="w-full text-left border-collapse">
+                            ${htmlTabela}
+                        </table>
+                        <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+                             <button onclick="deletarRelatorio('${rep.id}')" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1"><i class="fa-solid fa-trash mr-1"></i>Excluir Relatório</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleReport(id) {
+            const content = document.getElementById('content-' + id);
+            const icon = document.getElementById('icon-' + id);
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        function deletarRelatorio(id) {
+            if(confirm("Tem certeza que deseja excluir este relatório?")) {
+                historico = historico.filter(r => r.id !== id);
+                localStorage.setItem('smmam_historico', JSON.stringify(historico));
+                renderizarHistorico();
+                showToast("Relatório excluído.");
+            }
+        }
+
+        // --- Exportação ---
+        function exportarCSV() {
+            if (historico.length === 0) return showToast("Nenhum dado para exportar.", false);
+            
+            // Cria cabeçalhos baseados na estrutura atual (para consistência de colunas)
+            // Forma da tabela: Data | Total | Setor1-Indicador1 | Setor1-Indicador2 | ...
+            
+            // Pegar todas as combinações únicas de Grupo+Indicador no histórico para montar colunas
+            let colunas = new Set();
+            historico.forEach(rep => {
+                rep.dados.forEach(d => {
+                    colunas.add(`${d.grupo} - ${d.indicador}`);
+                });
+            });
+            const colunasArr = Array.from(colunas);
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Data Relatório,Total Geral," + colunasArr.map(c => `"${c}"`).join(",") + "\n";
+            
+            historico.forEach(rep => {
+                let row = [rep.data, rep.total];
+                
+                // Mapeia os dados do relatório para a posição correta da coluna
+                let valoresLinha = new Map();
+                rep.dados.forEach(d => valoresLinha.set(`${d.grupo} - ${d.indicador}`, d.qtd));
+                
+                colunasArr.forEach(col => {
+                    row.push(valoresLinha.get(col) || 0);
+                });
+                
+                csvContent += row.join(",") + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "smmam_historico_processos.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Utilitários ---
+        function switchTab(tab) {
+            document.getElementById('view-entry').classList.add('hidden');
+            document.getElementById('view-reports').classList.add('hidden');
+            document.getElementById('tab-entry').classList.remove('active');
+            document.getElementById('tab-reports').classList.remove('active');
+            
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        function formatarData(dataStr) {
+            const [ano, mes, dia] = dataStr.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function showToast(msg, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').innerText = msg;
+            
+            if(isSuccess) {
+                icon.className = "fa-solid fa-circle-check text-emerald-400 mr-3";
+            } else {
+                icon.className = "fa-solid fa-circle-exclamation text-red-400 mr-3";
+            }
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>
